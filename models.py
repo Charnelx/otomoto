@@ -2,7 +2,6 @@ from sqlalchemy import Column, DateTime, Integer, Float, String, Date, Numeric, 
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy_utils.types.choice import ChoiceType
 
 Base = declarative_base()
 

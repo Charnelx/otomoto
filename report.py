@@ -155,8 +155,6 @@ def export_xlsx(df):
     worksheet.write('R1', 'Link', format_title)
     worksheet.write('S1', 'DB date', format_title)
 
-    # worksheet.add_table('A2:O{}'.format(len(df)), {'data': df.values.tolist(), 'header_row': False})
-
     index = 2
     for _, row in df.iterrows():
         # TODO: replace this with index generating function

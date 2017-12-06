@@ -98,4 +98,9 @@ testo.py
 log.txt
 
 # Database folder
-db/*.*
+db/*
+!db/.empty
+
+# XLSX reports except sample
+.xlsx
+!sample.xlsx

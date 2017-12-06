@@ -2,6 +2,8 @@ import asyncio
 import aiohttp
 import logging
 
+# TODO: add file output for logger
+
 class GSession(aiohttp.ClientSession):
     """
     Make Session great again!
@@ -52,13 +54,3 @@ class GSession(aiohttp.ClientSession):
         finally:
             if semaphore:
                 semaphore.release()
-
-# async def main():
-#     s = GSession()
-#     res = await s.post('http://httpbin.org/post', data={'a': 1})
-#     if res:
-#         print(res.content)
-#
-# if __name__ == '__main__':
-#     loop = asyncio.get_event_loop()
-#     loop.run_until_complete(main())

@@ -52,11 +52,11 @@ def get_pln_rates(base_cur='pln'):
 
 
 def get_ukr_rates():
-    indexes = {'USD': 9, 'EUR': 8}
+    indexes = {'USD': 6, 'EUR': 5}
     resp = requests.get('http://bank-ua.com/export/exchange_rate_cash.json')
     if resp.status_code == 200:
         rates = json.loads(resp.text)
-
+        print(rates)
         def inner(amount, cur_from, buy=True):
             conversion_type = 'rateBuy'
             if buy:
@@ -64,12 +64,11 @@ def get_ukr_rates():
             rate = float(rates[indexes[cur_from.upper()]][conversion_type])
             return round(rate * amount, 2)
         return inner
+    raise AttributeError('Failed to get currency rates. Check connection.')
 
 
 def excises_benzine(capacity, year):
     cur_year = datetime.datetime.now(tz=pytz.utc).year
-
-    rate = 100
 
     # number 7 chosen to limit discount rates by >= 2011 year
     if (cur_year - year) < 7:
@@ -102,8 +101,6 @@ def excises_benzine(capacity, year):
 
 def excises_diesel(capacity, year):
     cur_year = datetime.datetime.now(tz=pytz.utc).year
-
-    rate = 100
 
     # number 7 chosen to limit discount rates by >= 2011 year
     if (cur_year - year) < 7:
@@ -155,16 +152,3 @@ def get_cc_value(value, capacity, engine_type, year, cur_obj):
     pension_fee = get_pension_fee(cur_obj, value + excise + customs_duty)
 
     return calculated_value + pension_fee
-
-
-# print(excises_benzine(1.4, 2011))
-# print(excises_diesel(1.4, 2011))
-#
-# cur_pln = get_pln_rates()
-# print(cur_pln(12900, 'eur'))
-#
-# cur_ukr = get_ukr_rates()
-# print(cur_ukr(100, 'eur'))
-
-# r = get_cc_value(7800, 1.4, 'benzine', 2011)
-# print(r)

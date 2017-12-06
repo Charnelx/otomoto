@@ -1,4 +1,3 @@
-import aiohttp
 import argparse
 import asyncio
 import datetime
@@ -266,7 +265,7 @@ class Scraper(object):
     ENTRY_URL = None
 
     def __init__(self, *args, **kwargs):
-        assert len(args) == 7
+        assert len(args) == 8
 
         value_min, value_max, year_from, year_to, mileage_min, mileage_max, fuel_type, damaged = args
 
