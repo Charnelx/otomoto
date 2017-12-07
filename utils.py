@@ -56,7 +56,7 @@ def get_ukr_rates():
     resp = requests.get('http://bank-ua.com/export/exchange_rate_cash.json')
     if resp.status_code == 200:
         rates = json.loads(resp.text)
-        print(rates)
+
         def inner(amount, cur_from, buy=True):
             conversion_type = 'rateBuy'
             if buy:

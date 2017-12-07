@@ -1,20 +1,19 @@
+import argparse
 import pandas as pd
 from models import CarArticle, Base, Phone, MetaInfo
 from utils import setup_db, get_pln_rates, get_ukr_rates, get_cc_value
+from datetime import date
 import datetime
 import xlsxwriter
 
-cur_ukr = get_ukr_rates()
-cur_pln = get_pln_rates()
 
-
-def convert_currency(row):
+def convert_currency(row, converter):
     currency = row['currency']
     value = row['value']
 
     # TODO: check this
     if currency.lower() == 'pln':
-        return cur_pln(value, 'eur')
+        return converter(value, 'eur')
     return value
 
 
@@ -29,7 +28,7 @@ def apply_pln_taxes(row):
     return real_value
 
 
-def calculate_urk_taxes(row):
+def calculate_urk_taxes(row, converter):
     value = row['price_eur']
     capacity = float(row['engine_capacity'])
     engine_type = row['engine_type']
@@ -39,25 +38,52 @@ def calculate_urk_taxes(row):
     if row['netto']:
         value = row['price_real']
 
-    customs_clearing_value = get_cc_value(value, capacity, engine_type, year, cur_ukr)
+    customs_clearing_value = get_cc_value(value, capacity, engine_type, year, converter)
     return customs_clearing_value
 
 
 def calculate_total(row):
     return row['price_real'] + row['customs_clearing']
 
-session = setup_db()
-DATA = pd.read_sql(session.query(CarArticle).statement, session.bind)
+# session = setup_db()
+# DATA = pd.read_sql(session.query(CarArticle).statement, session.bind)
+#
+# # data pre-processing
+# DATA['value'] = DATA['value'].astype('float')
+# DATA['price_eur'] = DATA.apply(convert_currency, axis=1)
+# DATA['price_real'] = DATA.apply(apply_pln_taxes, axis=1)
+# DATA['customs_clearing'] = DATA.apply(calculate_urk_taxes, axis=1)
+# DATA['price_total'] = DATA.apply(calculate_total, axis=1)
+#
+# DB_META = session.query(MetaInfo).get(1)
 
-# data pre-processing
-DATA['value'] = DATA['value'].astype('float')
-DATA['price_eur'] = DATA.apply(convert_currency, axis=1)
-DATA['price_real'] = DATA.apply(apply_pln_taxes, axis=1)
-DATA['customs_clearing'] = DATA.apply(calculate_urk_taxes, axis=1)
-DATA['price_total'] = DATA.apply(calculate_total, axis=1)
-# TODO: value + tax calculation
 
-DB_META = session.query(MetaInfo).get(1)
+def args_init():
+    arg_parser = argparse.ArgumentParser()
+
+    arg_parser.add_argument('--value_min', required=False,
+                            default=0, help='Car minimum value')
+    arg_parser.add_argument('--value_max', required=False,
+                            default=0, help='Car maximum value')
+    arg_parser.add_argument('--year_from', required=False,
+                            default='1990', help='Production year - from')
+    arg_parser.add_argument('--year_to', required=False,
+                            default=str(date.today().year), help='Production year - to')
+    arg_parser.add_argument('--mileage_min', required=False,
+                            default=0, help='Minimum mileage')
+    arg_parser.add_argument('--mileage_max', required=False,
+                            default=0, help='Maximum mileage')
+    arg_parser.add_argument('--fuel_type', required=False,
+                            default='', help='Engine fuel type')
+    arg_parser.add_argument('--damaged', required=False,
+                            default=0, help='Add damaged cars to search query')
+
+    args = arg_parser.parse_args()
+
+    args.year_from = datetime.datetime.strptime(args.year_from, '%Y')
+    args.year_to = datetime.datetime.strptime(args.year_to, '%Y')
+
+    return args
 
 
 def color_row(workbook, format_class, color=None):
@@ -165,7 +191,7 @@ def export_xlsx(df):
 
         worksheet.write('A{}'.format(index), row['name'], color_row(workbook, format_normal, color=color))
         worksheet.write('B{}'.format(index), row['manufacturer'], color_row(workbook, format_normal, color=color))
-        worksheet.write('C{}'.format(index), row['year'].year, color_row(workbook, format_normal, color=color))
+        worksheet.write('C{}'.format(index), row['year'], color_row(workbook, format_normal, color=color))
         worksheet.write_number('D{}'.format(index), row['mileage'], color_row(workbook, format_normal, color=color))
         worksheet.write('E{}'.format(index), row['engine_capacity'], color_row(workbook, format_capacity, color=color))
         worksheet.write('F{}'.format(index), row['engine_type'], color_row(workbook, format_normal, color=color))
@@ -191,4 +217,33 @@ def export_xlsx(df):
 
     workbook.close()
 
-export_xlsx(DATA)
+# export_xlsx(DATA)
+
+if __name__ == '__main__':
+    args = args_init()
+
+    cur_ukr = get_ukr_rates()
+    cur_pln = get_pln_rates()
+
+    session = setup_db()
+    data = pd.read_sql(session.query(CarArticle).statement, session.bind)
+
+    # data pre-processing
+    data['value'] = data['value'].astype('float')
+    data['price_eur'] = data.apply(convert_currency, args=(cur_pln, ), axis=1)
+    data['price_real'] = data.apply(apply_pln_taxes, axis=1)
+    data['customs_clearing'] = data.apply(calculate_urk_taxes, args=(cur_ukr, ), axis=1)
+    data['price_total'] = data.apply(calculate_total, axis=1)
+    data['year'] = data['year'].apply(lambda x: x.year)
+
+    DB_META = session.query(MetaInfo).get(1)
+
+    data = data.query('{} <= value'.format(args.value_min))
+    if args.value_max:
+        # val_max = data['value'].max()
+        # data['value'] = data[(0 <= data['value']) & (data['value'] <= val_max)]['value']
+        data = data.query('{} <= value <= {}'.format(args.value_min, args.value_max))
+
+    data = data.query('{} <= year <= {}'.format(args.year_from.year, args.year_to.year))
+    data = data.query('{} <= mileage <= {}'.format(args.mileage_min, args.mileage_max))
+    print(data.head())
