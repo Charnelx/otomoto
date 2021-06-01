@@ -19,6 +19,6 @@ seaborn==0.8.1
 six==1.11.0
 sklearn==0.0
 SQLAlchemy==1.1.15
-urllib3==1.22
+urllib3==1.26.5
 XlsxWriter==1.0.2
 yarl==0.15.0
